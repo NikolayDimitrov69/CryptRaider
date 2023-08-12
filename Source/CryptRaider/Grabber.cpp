@@ -30,13 +30,7 @@ void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompone
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	UPhysicsHandleComponent * PhysicHandle = GetPhysicsHandle();
-	if (PhysicHandle == nullptr)
-	{
-		return;	
-	}
-
-	UPrimitiveComponent* GrabbedComponent = PhysicHandle->GetGrabbedComponent();
-	if (GrabbedComponent != nullptr)
+	if (PhysicHandle && PhysicHandle->GetGrabbedComponent())
 	{
 		FVector TargetLocation = GetComponentLocation() + GetForwardVector() * HoldDistance;
 		PhysicHandle->SetTargetLocationAndRotation(TargetLocation, GetComponentRotation());
@@ -46,30 +40,28 @@ void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompone
 void UGrabber::Release()
 {
 	UPhysicsHandleComponent * PhysicHandle = GetPhysicsHandle();
-	if (PhysicHandle == nullptr)
-	{
-		return;	
-	}
 	UPrimitiveComponent* GrabbedComponent = PhysicHandle->GetGrabbedComponent();
-	if (GrabbedComponent != nullptr)
+	if (PhysicHandle && GrabbedComponent)
 	{
+		AActor* GrabbedActor = GrabbedComponent->GetOwner();
+		GrabbedActor->Tags.Remove("Grabbed");
 		PhysicHandle->ReleaseComponent();
 	}
+	
 }
 
 void UGrabber::Grab(){
 	
 	UPhysicsHandleComponent * PhysicHandle = GetPhysicsHandle();
-	if (PhysicHandle == nullptr)
-	{
-		return;	
-	}
-
 	FHitResult HitResult;
-	if (GetGrabbableInReach(HitResult))
+
+	if (PhysicHandle && GetGrabbableInReach(HitResult))
 	{
 		UPrimitiveComponent * ComponentHit = HitResult.GetComponent();
 		ComponentHit->WakeAllRigidBodies();
+		HitResult.GetActor()->Tags.Add("Grabbed");
+		HitResult.GetActor()->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+		ComponentHit->SetSimulatePhysics(true);
 		PhysicHandle->GrabComponentAtLocationWithRotation
 		(
    			ComponentHit,
@@ -78,17 +70,16 @@ void UGrabber::Grab(){
     		GetComponentRotation()
 		);
 	}
-	
+
 }
 
 UPhysicsHandleComponent * UGrabber::GetPhysicsHandle() const
 {
 	UPhysicsHandleComponent * PhysicsHandle = GetOwner()->FindComponentByClass<UPhysicsHandleComponent>();
-	if (PhysicsHandle == nullptr)
+	if (!PhysicsHandle)
 	{
 		UE_LOG(LogTemp, Error, TEXT("No PhysicsHandle component found!"));	
 	}
-	
 	return PhysicsHandle;
 }
 
